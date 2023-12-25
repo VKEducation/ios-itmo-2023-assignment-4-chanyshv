@@ -2,19 +2,31 @@ import Foundation
 
 class ThreadSafeArray<T> {
     private var array: [T] = []
-    private let lock = NSLock()
+    private var lock = pthread_rwlock_t()
+    private var attr = pthread_rwlockattr_t()
+
+    init() {
+        pthread_rwlockattr_init(&attr)
+        pthread_rwlock_init(&lock, &attr)
+    }
+
+    deinit {
+        pthread_rwlock_destroy(&lock)
+        pthread_rwlockattr_destroy(&attr)
+    }
 
     func append(_ item: T) {
-        lock.lock()
+        pthread_rwlock_wrlock(&lock)
         array.append(item)
-        lock.unlock()
+        pthread_rwlock_unlock(&lock)
     }
 
     func remove(at index: Int) {
-        lock.lock()
+        pthread_rwlock_wrlock(&lock)
         array.remove(at: index)
-        lock.unlock()
+        pthread_rwlock_unlock(&lock)
     }
+
 }
 
 extension ThreadSafeArray: RandomAccessCollection {
@@ -22,28 +34,34 @@ extension ThreadSafeArray: RandomAccessCollection {
     typealias Element = T
 
     var startIndex: Index {
-        lock.lock()
-        defer { lock.unlock() }
+        pthread_rwlock_rdlock(&lock)
+        defer { pthread_rwlock_unlock(&lock) }
         return array.startIndex
     }
 
     var endIndex: Index {
-        lock.lock()
-        defer { lock.unlock() }
+        pthread_rwlock_rdlock(&lock)
+        defer { pthread_rwlock_unlock(&lock) }
         return array.endIndex
     }
 
-    subscript(index: Index) -> Element {
+    func index(after i: Index) -> Index {
+        pthread_rwlock_rdlock(&lock)
+        defer { pthread_rwlock_unlock(&lock) }
+        return array.index(after: i)
+    }
+
+    subscript(index: Int) -> T {
         get {
-            lock.lock()
-            defer { lock.unlock() }
+            pthread_rwlock_rdlock(&lock)
+            defer { pthread_rwlock_unlock(&lock) }
             return array[index]
+        }
+        set {
+            pthread_rwlock_wrlock(&lock)
+            array[index] = newValue
+            pthread_rwlock_unlock(&lock)
         }
     }
 
-    func index(after i: Index) -> Index {
-        lock.lock()
-        defer { lock.unlock() }
-        return array.index(after: i)
-    }
 }
