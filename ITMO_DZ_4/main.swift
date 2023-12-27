@@ -1,9 +1,11 @@
 import Foundation
 
-let ff = ThreadSafeArray<Int>()
-var dd = [1]
-dd.append(1)
-ff.dropFirst()
+let manager = TaskManager()
+let taskA = BasicTask(priority: 1) { print("Executing Task A") }
+let taskB = BasicTask(priority: 2) { print("Executing Task B") }
+let taskC = BasicTask(priority: 3) { print("Executing Task C") }
 
-let sd = ff[0]
+taskA.addDependency(taskB)
+taskA.addDependency(taskC)
 
+manager.add(taskA)
